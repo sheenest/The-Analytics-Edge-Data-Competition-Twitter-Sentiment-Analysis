@@ -543,14 +543,14 @@ prep_data <- function(x){
 }
 
 
-
-# for train data set
-train <- prep_data( "train.csv" )
-train_data <- train$data
-train_data$sentiment <- train$sentiment
-write.csv( train_data,"train_data.csv", row.names = FALSE)
-
-# for test data set
-test <- prep_data( "test.csv" )
-test_data <- test$data
-write.csv( test_data,"test_data.csv", row.names = FALSE)
+# Running the code below will clean the entire train and test data, which would take 30-40 minutes.
+# # for train data set
+# train <- prep_data( "train.csv" )
+# train_data <- train$data
+# train_data$sentiment <- train$sentiment
+# write.csv( train_data,"train_data.csv", row.names = FALSE)
+# 
+# # for test data set
+# test <- prep_data( "test.csv" )
+# test_data <- test$data
+# write.csv( test_data,"test_data.csv", row.names = FALSE)
