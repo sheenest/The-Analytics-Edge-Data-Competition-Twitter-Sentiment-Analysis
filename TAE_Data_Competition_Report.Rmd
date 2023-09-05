@@ -1,0 +1,279 @@
+---
+title: "TAE Data Competition"
+author: "Tan Zen Sheen"
+date: "2023-09-02"
+output: html_document
+---
+
+# The Analytics Edge Data Competition, Twitter Sentiment Analysis
+
+In this project, we are given a test and train dataset of Tweets from twitter.
+In the train.csv data, tweets have been labelled with a Sentiment score of -1, 0, or 1, representing sentiments of negative, neutral or positive respectively.
+
+Through applying various Machine Learning Techniques, my team and I are tasked to create a data model to use the Data Model to make predictions on train.csv dataset.
+
+# Load Packages needed for this Project, install if needed.
+```{r}
+library(stringr) 
+library(spellcheckr)
+library(dplyr)
+library(tm)
+library(SnowballC)
+library(ROCR)
+library(caTools)
+```
+
+# Data Cleaning and Processing
+In cleaning and processing the data of tweets, we decided to go one step further, extracting information of emoticons from the tweets and assigning a value of a certain emotion associated with the emoticon.
+
+```{r cars}
+source("clean.R")
+```
+
+## How it works
+```{r}
+# test code for clean_punc function
+clean_punc( " yeeeeah .. . and it was in into too  seen Empire top 100 computer games? http://www.empireonline.com/100greatestgames/" )
+clean_punc("i kno look ? :) (: i doooo!!!!!!!!!! yall partyin with out me htttp://www.google.com" )
+clean_punc( "fuckkk i need sleepppppppp lol, happy mothers day mummy" )
+clean_punc("heyheyheyheyehyeyyyyyyyyyyyyyyyy")
+```
+
+```{r}
+#test clean_string
+str1 <- " just looove  bf  u  awesoome!!!!:) [hannah montana  movie  amazing  best movie ever!!]  // cool http://gykd.net"
+# 
+class(str1)
+ls <- clean_punc( str1 )
+ls$words
+ls$punc
+str1
+```
+
+
+## Execute Cleaning and Data Processing on test and train datasets.
+Note of Caution: Running the code below will take 20-30 minutes
+In the original competition, an unlabelled test data set, test_data.csv is given for us to make our predictions on, which would be submitted on to Kaggle. As the labels from the test data are not available, we shalll ignore the test data and instead split the labelled data for training and testing. 
+The model will be trained on the splitted training data and tested on the splitted testing data.
+```{r}
+
+# train <- prep_data( "train.csv" )
+# train_data <- train$data
+# train_data$sentiment <- train$sentiment
+# write.csv( train_data,"train_data.csv", row.names = FALSE)
+
+
+```
+
+# Load Processed Data and split data for Training and Testing
+```{r}
+data <- read.csv("train_data.csv")
+
+set.seed(123)
+split_indices  <- sample.split(data , SplitRatio=0.7)
+
+train_data <- data[split_indices, ]
+test_data <- data[!split_indices, ]
+
+```
+
+# First Model
+In the first model, we will predicting neutral and non-neutral (positive or negative) tweets, before predicting positive and negative tweets.
+
+The motivation behind this model is that based on the principle that tweets that are less likely to negative are more likely to be positve, and vice versa.
+
+The methodology of this model is to first create a subset of the 
+
+
+## Data Preparation for 1st Model
+```{r}
+# make copies of train and data so as to modify orignial data
+train_lr <- train_data
+test_lr <- test_data
+
+# Assign Positive, Neutral and Negative columns to training data, based on Sentiment Scores
+train_lr$Neutral <-as.factor(train_data$sentiment==0)
+train_lr$NonNeutral <-as.factor(train_data$sentiment!=0)
+
+# Do the same for test data, for testing of model
+test_lr$Neutral <-as.factor(test_data$sentiment==0)
+test_lr$NonNeutral <-as.factor(test_data$sentiment!=0)
+
+# Data for Neutral Model
+train_Neutral <- subset( train_lr , select = -c(sentiment,NonNeutral) )
+test_Neutral <- subset( test_lr , select = -c(sentiment,NonNeutral) )
+
+# Data for Non-Neutral Model
+# remove neutral tweet, so we are now left with positive and negative tweets
+train_Non_Neutral <- train_lr[ train_lr$NonNeutral == TRUE , ]
+test_Non_Neutral <- test_lr[ test_lr$NonNeutral == TRUE , ]
+
+test_Non_Neutral$Positive <- as.factor( test_Non_Neutral$sentiment == 1 )
+train_Non_Neutral$Positive <- as.factor( train_Non_Neutral$sentiment == 1 )
+
+train_Non_Neutral <- subset( train_Non_Neutral , select = -c(Neutral , NonNeutral , sentiment ) )
+test_Non_Neutral <- subset( test_Non_Neutral , select = -c(Neutral , NonNeutral , sentiment ) )
+
+
+
+```
+## Neutral Model, seperating neutral from non-neutral tweet
+```{r}
+# Logistic regression
+# ---------------------------Neutral Model--------------------------- 
+modelNeutral <- glm(Neutral~0+., data=train_Neutral, family=binomial)
+# summary(modelNeutral) # AIC: 17588
+
+neutral_pVal <- summary(modelNeutral)$coefficients[,4] #p values
+neutral_sigVal <- names(neutral_pVal[neutral_pVal <= 0.05]) #5% level
+
+modelNeutral_2 <- glm(as.formula(
+  paste0("Neutral ~ ",
+         paste0(neutral_sigVal, collapse = " + "),
+         "-1")  
+) , data = train_Neutral, family = binomial)
+summary(modelNeutral_2) #AIC: 17434
+```
+## Non-Neutral Model, Seperating Positive tweets from Negative Tweets
+```{r}
+
+modelPositive <- glm(Positive~0+., data=train_Non_Neutral, family=binomial)
+
+
+positive_pVal <- summary(modelPositive)$coefficients[,4] #p values
+positive_sigVal <- names(positive_pVal[positive_pVal <= 0.1]) #10% level
+
+modelPositive_2 <- glm(as.formula(
+  paste0("Positive ~ ",
+         paste0(positive_sigVal, collapse = " + "),
+         "-1")  
+) , data = train_Non_Neutral, family = binomial)
+
+```
+
+
+## Model Predictions for 1st Model 
+
+**NEED HELP TO EDIT THIS PART. MODEL IS MEANT TO RUN ON THE TRAINING DATA WITHOUT SPLITTING THE NEUTRAL AND NON-NEUTRAL LABELS.
+RATHER IT SHOULD HAVE THE PREDICTED NEUTRAL AND NON-NEUTRAL DATA SPLIT FROM THE FIRST MODEL, THEN POSITIVE AND NEGATIVE DATA SPLIT FROM THE SECOND MODEL.
+```{r}
+# Non-Neutral Model
+predict_pn <- predict( modelPositive_2, test_Non_Neutral , type = 'response' ) 
+
+tab_pn <- table(predict_pn>0.53,test_Non_Neutral$Positive) #CM
+Accuracy = (tab_pn[1,1]+tab_pn[2,2])/sum(tab_pn)
+Accuracy # [1] 0.8128718
+
+library(ROCR)
+
+print( length(predict_pn ))
+print( length(test_Non_Neutral$Positive) )
+
+predict_pn1 <- prediction( predict_pn , test_Non_Neutral$Positive )
+perf_pn <- performance(predict_pn1,x.measure="fpr",measure="tpr")
+plot(perf_pn,colorize=T,print.cutoffs.at=c(0,0.1,0.2,0.3,0.5,0.6,0.7,0.8,0.9,1),text.adj=c(-.02,1.7))
+
+
+# Neutral Model
+predict_nn <- predict( modelNeutral_2 , test_Neutral , type = 'response' ) 
+tab_nn <- table(predict_nn>0.49,test_Neutral$Neutral) #CM
+Accuracy = (tab_nn[1,1]+tab_nn[2,2])/sum(tab_nn)
+Accuracy # [1] 0.69073
+
+print( length(predict_nn) )
+print( length(test_Neutral$Neutral) )
+
+predict_nn1 <- prediction( predict_nn , test_Neutral$Neutral )
+perf_nn <- performance(predict_pn1,x.measure="fpr",measure="tpr")
+plot(perf_nn,colorize=T,print.cutoffs.at=c(0,0.1,0.2,0.3,0.5,0.6,0.7,0.8,0.9,1),text.adj=c(-.02,1.7))
+
+```
+
+
+# Second Model: Random Forest 
+This model takes a while to train.
+```{r}
+print( head(train_data))
+library(randomForest)
+
+# subset columns in train so that it only has the prediction column, sentiment, and the rest of the words
+train_rf <- train_data
+
+train_rf$sentiment <- as.factor(train_rf$sentiment)
+# print(class(train_rf$sentiment))
+rf_model <- randomForest( sentiment~., data=train_rf , ntree = 50 , ncores = 8 )
+# changing ntree to 100 does not make much of a difference
+
+# summary(modelPositive)
+
+# importance(modelPositive)
+varImpPlot(rf_model) # plot
+
+# Test Model on original Training Data
+predict_rf_train <- predict(rf_model, newdata=train_data , type = "response" )
+
+tab_rf_train <- table(predict_rf_train, train_data$sentiment)
+
+print(tab_rf_train )
+Accuracy = (tab_rf_train[1,1]+tab_rf_train[2,2] + tab_rf_train[3,3])/sum(tab_rf_train)
+Accuracy # [1] 0.8387231
+
+
+# Test Model on Test Data
+test_data$sentiment <- as.factor(test_data$sentiment)
+predict_rf <- predict(rf_model, newdata=test_data , type = "response" )
+
+tab_rf <- table(predict_rf, test_data$sentiment)
+
+print(tab_rf )
+Accuracy = (tab_rf[1,1]+tab_rf[2,2] + tab_rf[3,3])/sum(tab_rf)
+Accuracy # [1] 0.651129
+```
+
+```{r}
+
+library(keras)
+
+# subset columns in train so that it only has the prediction column, sentiment, and the rest of the words
+train_nn <- train_data
+
+
+model <- keras_model_sequential() %>%
+  layer_dense(units = 64, activation = 'relu', input_shape = dim(X)[2]) %>%
+  layer_dense(units = 32, activation = 'relu') %>%
+  layer_dense(units = 1, activation = 'sigmoid')
+
+
+model %>% compile(
+  optimizer = 'adam',
+  loss = 'binary_crossentropy',  # For binary classification
+  metrics = c('accuracy')
+)
+
+history <- model %>% fit(
+  x = subset(train_rf ,  ),
+  y = y_train,
+  epochs = 100,  # Number of training iterations
+  batch_size = 32,  # Batch size for gradient updates
+  validation_split = 0.2  # Split data into training and validation sets
+)
+
+evaluation <- model %>% evaluate(
+  x = X_test,
+  y = y_test
+)
+
+cat("Accuracy:", evaluation$accuracy, "\n")
+
+predictions <- model %>% predict(X_new_data)
+
+```
+
+
+
+## Predictions
+```{r}
+Accuracy = (tab_rf[1,1]+tab_rf[2,2])/sum(tab_rf)
+Accuracy # [1] 0.823225
+
+```
