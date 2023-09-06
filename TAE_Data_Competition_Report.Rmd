@@ -21,6 +21,9 @@ library(tm)
 library(SnowballC)
 library(ROCR)
 library(caTools)
+library(glmnet)
+library(nnet)
+
 ```
 
 # Data Cleaning and Processing
@@ -33,9 +36,9 @@ source("clean.R")
 ## How it works
 ```{r}
 # test code for clean_punc function
-clean_punc( " yeeeeah .. . and it was in into too  seen Empire top 100 computer games? http://www.empireonline.com/100greatestgames/" )
-clean_punc("i kno look ? :) (: i doooo!!!!!!!!!! yall partyin with out me htttp://www.google.com" )
-clean_punc( "fuckkk i need sleepppppppp lol, happy mothers day mummy" )
+# clean_punc( " yeeeeah .. . and it was in into too  seen Empire top 100 computer games? http://www.empireonline.com/100greatestgames/" )
+# clean_punc("i kno look ? :) (: i doooo!!!!!!!!!! yall partyin with out me htttp://www.google.com" )
+# clean_punc( "fuckkk i need sleepppppppp lol" )
 clean_punc("heyheyheyheyehyeyyyyyyyyyyyyyyyy")
 ```
 
@@ -274,6 +277,17 @@ for (i in 1:nrow(test_data)) {
 accuracy <- correct / nrow(test_data)
 accuracy
 ```
+
+```{r}
+# Additional 
+# Combine all 3 models into one model and try finding accuracy 
+
+# Touch later 
+model <- multinom(sentiment ~ ., data = data)
+
+```
+
+
 
 
 
