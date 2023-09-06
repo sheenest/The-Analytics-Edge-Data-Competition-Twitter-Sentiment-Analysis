@@ -1,3 +1,11 @@
+
+
+## This script is for the cleaning and preparing of the test and train datasets.
+
+## Running this script will automatically execute the entire data cleaning and preparation procedures.
+## The script will read train.csv and test.csv and produce train_data.csv and test_data.csv.
+
+
 rm(list=ls()) # Clear the environment
 
 library(stringr) 
@@ -31,86 +39,6 @@ emo_data$sadd <- as.factor( emo_data$Score == -1)
 smle <- emo_data$Emoticon[ emo_data$Score == 1 ]
 smle
 sadd <- emo_data$Emoticon[ emo_data$Score == -1 ]
-
-
-# test_str <- "i kno look ? :) (: i doooo!!!!!!!!!! yall partyin with out me htttp://www.google.com"
-# 
-# wrong_words <- str_extract_all(test_str, "\\p{L}*(\\p{L})\\1+\\p{L}*" )[[1]]
-# wrong_words
-# 
-# for ( i in 1:length(wrong_words )){
-#   
-#   wrong_words[i] <- gsub('([[:alpha:]])\\1+', '\\1', wrong_words[i] )
-#   wrong_words[i]
-#   wrong_words[i] <- correct( wrong_words[i] )
-#   
-# }
-# wrong_words
-# 
-
-# gsub('([[:alpha:]])\\1+', '\\1',test_str )
-
-# test_str<- gsub('([[:alpha:]])\\1+', '\\1', test_str)
-# words <- str_replace_all(test_str, "[[:punct:]]", "")
-#list of words
-
-# grepl( "\(^\| \)\([A-Za-z]\)\2\2\($\| \)" , test_str )
-
-# words <- strsplit( test_str , split = "\\s+" )[[1]]
-# words <- words[words != ""]
-
-# words
-
-# websites characters
-# www
-# http
-# .com
-
-# for ( i in 1:length(words) ){
-#   if( grepl( "www" , words[i] , fixed = TRUE  ) ){
-#     
-#     words <- words[ words!= words[i] ]   
-#     
-#     # print("yes")
-#     # words <- words[ names(words) %in% "www" == FALSE]
-#     
-#   }
-#   if( grepl( "http" , words[i] , fixed = TRUE  ) ){
-#     
-#     words <- words[ words!= words[i] ]   
-#     
-#     # print("yes")
-#     # words <- words[ names(words) %in% "www" == FALSE]
-#     
-#   }
-#   if( grepl( ".com" , words[i] , fixed = TRUE  ) ){
-#     
-#     words <- words[ words!= words[i] ]   
-#     
-#     # print("yes")
-#     # words <- words[ names(words) %in% "www" == FALSE]
-#     
-#   }
-# }
-# words 
-# str <- paste( words , collapse = " ")
-# str
-# punc <- str_replace_all(str, "[[:alnum:]]", "" )
-# punc
-
-
-
-# punc <- str_replace_all( test_str , "[[:alnum:]]", "")
-# 
-# val <- FALSE
-# for( i in 1: length(smle) ){
-#   if( grepl(  smle[i] , punc, fixed = TRUE) ){
-#     val <- TRUE
-#     break
-#   }
-# }
-# val
-
 
 
 
@@ -204,12 +132,8 @@ clean_string <- function(x){
 
 clean_punc <- function(x){
   
-  #extrac punctuations
+  #extract punctuations
   punc <- str_replace_all(x, "[[:alnum:]]", "" )
-  
-  # punc <- strsplit( punc , split = "\\s+" )[[1]]
-  
-  # punc <- punc[punc != ""]
   
   save_punc <- data.frame(excl = c(0) , 
                           qsnm = c(0) , 
@@ -301,26 +225,13 @@ clean_punc <- function(x){
     save_punc$dott[1] <- 1
   }
   
-  # print( "save_punc new ")
-  # print( save_punc )
-  
-  #extract words from text 
-  # x<- gsub('([[:alpha:]])\\1+', '\\1', x)
-  
-  # extract words with 3 consecutive;y repeating characters and correct them
-  # wrong_words <- unlist( str_extract_all(x, "\\p{L}*(\\p{L})\\1+\\p{L}*" ) )
-  
-  # print( str_extract_all(x, "\\p{L}*(\\p{L})\\1\\1+\\p{L}*" ) )
+  # extract words with 3 consecutively repeating characters and correct them
   wrong_words <- unlist( str_extract_all(x, "\\p{L}*(\\p{L})\\1\\1+\\p{L}*" ) )
   print( wrong_words )
   correct_words <- list()
   if ( length( wrong_words) >= 1 ){
     for ( i in 1:length(wrong_words )){
       
-      
-      # print( wrong_words[i])
-      #replace repeating letters with one letter
-      # loook -> lok
       wword <- as.character (wrong_words[i])
       # print( class(wword) )
       
@@ -354,14 +265,6 @@ clean_punc <- function(x){
   #add in correct words
   words <- append( words , correct_words )
   
-  # for ( i in 1:length(words) ){
-  #   
-  #   if ( words[[i]] %in% wrong_words ){
-  #     
-  #   }
-  # }
-  # words[ words== wrong_words ] <- correct_words
-  
   
   words <- words[ words != ""]
   words <- paste(words, collapse = " ")
@@ -377,6 +280,7 @@ clean_punc <- function(x){
   return(out)
 }
 
+## test code for clean_punc function
 # clean_punc( " yeeeeah .. . and it was in into too  seen Empire top 100 computer games? http://www.empireonline.com/100greatestgames/" )
 # clean_punc("i kno look ? :) (: i doooo!!!!!!!!!! yall partyin with out me htttp://www.google.com" )
 # clean_punc( "fuckkk i need sleepppppppp lol, happy mothers day mummy" )
@@ -411,20 +315,13 @@ prep_data <- function(x){
   # ?tm_map
   
   
-  # 1 convert text to lower case
+  # 1 convert text to lower case and remove stopwords
   # to fix the above error when converting text to lower case
   corpus <- tm_map(corpus, function(x) iconv(enc2utf8(x), sub = "byte"))
   corpus <- tm_map(corpus, content_transformer(function(x)    iconv(enc2utf8(x), sub = "bytes")))
   corpus <- tm_map(corpus, content_transformer(tolower))
   # corpus
-  
-  # corpus <- Corpus(VectorSource(twitter[,names(twitter) != "sentiment" ]))
-  # corpus[[1]]
-  # as.character(corpus[[1]])
-  # corpus[[20610]]
-  # as.character(corpus[[20610]])
-  # getTransformations()
-  # ?tm_map
+  corpus <- tm_map(corpus,removeWords,stopwords("english"))
   
   
   # 1.5 clean words(remove punctuations right next to works) and extract punctuations
@@ -483,6 +380,7 @@ prep_data <- function(x){
   # And ... Let's check a couple of documents
   # as.character(corpus[[1]])
   # as.character(corpus[[20610]])
+  corpus <- tm_map(corpus,removeNumbers)
   
   
   # #4 Stemming
@@ -500,14 +398,6 @@ prep_data <- function(x){
   
   
   #5 remove sparse terms
-  
-  # freq <- termFreq( corpus , control = list(
-  #   removePunctuation = FALSE,
-  #   # dictionary = c("babi")
-  #   dictionary = c( ":(" , ":)" , "!" , "?" , ".." ),
-  #   wordLengths=c(-Inf,Inf),
-  #   tolower=FALSE
-  # ))
   
   dtm <- DocumentTermMatrix(corpus)
   
@@ -542,15 +432,3 @@ prep_data <- function(x){
   
 }
 
-
-# Running the code below will clean the entire train and test data, which would take 30-40 minutes.
-# # for train data set
-# train <- prep_data( "train.csv" )
-# train_data <- train$data
-# train_data$sentiment <- train$sentiment
-# write.csv( train_data,"train_data.csv", row.names = FALSE)
-# 
-# # for test data set
-# test <- prep_data( "test.csv" )
-# test_data <- test$data
-# write.csv( test_data,"test_data.csv", row.names = FALSE)
