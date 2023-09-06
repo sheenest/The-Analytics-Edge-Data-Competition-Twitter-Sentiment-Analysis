@@ -80,7 +80,7 @@ test_data <- data[!split_indices, ]
 # First Model
 In the first model, we will predicting neutral and non-neutral (positive or negative) tweets, before predicting positive and negative tweets.
 
-The motivation behind this model is that based on the principle that tweets that are less likely to negative are more likely to be positve, and vice versa.
+The motivation behind this model is that based on the principle that tweets that are less likely to negative are more likely to be positive, and vice versa.
 
 The methodology of this model is to first create a subset of the 
 
@@ -114,9 +114,8 @@ train_Non_Neutral$Positive <- as.factor( train_Non_Neutral$sentiment == 1 )
 train_Non_Neutral <- subset( train_Non_Neutral , select = -c(Neutral , NonNeutral , sentiment ) )
 test_Non_Neutral <- subset( test_Non_Neutral , select = -c(Neutral , NonNeutral , sentiment ) )
 
-
-
 ```
+
 ## Neutral Model, seperating neutral from non-neutral tweet
 ```{r}
 # Logistic regression
@@ -134,6 +133,7 @@ modelNeutral_2 <- glm(as.formula(
 ) , data = train_Neutral, family = binomial)
 summary(modelNeutral_2) #AIC: 17434
 ```
+
 ## Non-Neutral Model, Seperating Positive tweets from Negative Tweets
 ```{r}
 
@@ -189,6 +189,8 @@ plot(perf_nn,colorize=T,print.cutoffs.at=c(0,0.1,0.2,0.3,0.5,0.6,0.7,0.8,0.9,1),
 
 ```
 
+## Commentary
+
 
 # Second Model: Random Forest 
 This model takes a while to train.
@@ -230,6 +232,8 @@ Accuracy = (tab_rf[1,1]+tab_rf[2,2] + tab_rf[3,3])/sum(tab_rf)
 Accuracy # [1] 0.651129
 ```
 
+
+# Model 3 Neural Network
 ```{r}
 
 library(keras)
@@ -252,7 +256,7 @@ model %>% compile(
 
 history <- model %>% fit(
   x = subset(train_rf ,  ),
-  y = y_train,
+  y = sentiment,
   epochs = 100,  # Number of training iterations
   batch_size = 32,  # Batch size for gradient updates
   validation_split = 0.2  # Split data into training and validation sets
