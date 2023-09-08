@@ -1,10 +1,8 @@
 
 
-## This script is for the cleaning and preparing of the test and train datasets.
-
-## Running this script will automatically execute the entire data cleaning and preparation procedures.
-## The script will read train.csv and test.csv and produce train_data.csv and test_data.csv.
-
+## This script is for the cleaning and processing of the data.
+## prep_data takes in the string name of the csv file that would be cleaned and processed, 
+## and produces the dataframe that would be used for training and testing.
 
 rm(list=ls()) # Clear the environment
 
@@ -13,122 +11,16 @@ library(spellcheckr)
 library(dplyr)
 library(tm)
 library(SnowballC)
-# library(qdapDictionaries)
-# data(emoticon)
-# force(emoticon)
-# 
-# data <- force(emoticon)
-# data
-
-# write.csv( data,"C:\\Users\\zensh\\Downloads\\emoticon_data.csv", row.names = FALSE)
-
-
-# emo_data <- read.csv("emoticon_data.csv")
-# nrow(emo_data[emo_data$emoticon == "#NAME"  ] )
-# smle<- emo_data$emoticon[ emo_data$smle == 1 ]
-# smle
-# grepl( emo_data$emoticon[1] , "ccc(.V.) cccc", fixed = TRUE) 
 
 emo_data <- read.csv("emoticons_long.csv")
 
+# check example
 emo_data$Score[ emo_data$Emoticon == "<3" ]
 
-emo_data$smle <- as.factor( emo_data$Score == 1)
-emo_data$sadd <- as.factor( emo_data$Score == -1)
+smle <-emo_data$Emoticon[ emo_data$Score == 1 ]
+sadd <-emo_data$Emoticon[ emo_data$Score == -1 ]
 
-smle <- emo_data$Emoticon[ emo_data$Score == 1 ]
 smle
-sadd <- emo_data$Emoticon[ emo_data$Score == -1 ]
-
-
-
-
-clean_string <- function(x){
-  
-  #extrac punctuations
-  punc <- str_replace_all(x, "[[:alnum:]]", "")
-  
-  # punc <- strsplit( punc , split = "\\s+" )[[1]]
-  
-  # punc <- punc[punc != ""]
-  
-  save_punc <- list()
-  
-  #smle
-  if( grepl( "!", punc, fixed = TRUE) ){
-    save_punc <- append( save_punc , "!" )
-  }
-  
-  #qsnm
-  if( grepl( "?", punc, fixed = TRUE) ){
-    save_punc <- append( save_punc , "?" )
-  }
-  
-  #smle
-  if( grepl( ":)", punc, fixed = TRUE) || grepl( "(:", punc, fixed = TRUE) ){
-    save_punc <- append( save_punc , ":)" )
-  }
-  
-  #sadd
-  if( grepl( ":(", punc, fixed = TRUE) || grepl( "):", punc, fixed = TRUE) ){
-    save_punc <- append( save_punc , ":(" )
-  }
-  
-  #dott
-  if( grepl( "..", punc, fixed = TRUE) ){
-    save_punc <- append( save_punc , ".." )
-  }
-  
-  
-  
-  
-  # # seperating significant punctuations'
-  # punc[ grepl( "(:", punc , fixed = TRUE)   ] <- ":)"
-  # punc[ grepl( ":)", punc , fixed = TRUE)   ] <- ":)"
-  # 
-  # punc[ grepl( "):", punc , fixed = TRUE)   ] <- ":("
-  # punc[ grepl( ":(", punc , fixed = TRUE)   ] <- ":("
-  # 
-  # 
-  # punc[ grepl( "!", punc , fixed = TRUE)   ] <- "!"
-  # punc[ grepl( "?", punc , fixed = TRUE)   ] <- "?"
-  # punc[ grepl( "..", punc , fixed = TRUE)   ] <- "..."
-  
-  
-  
-  # print("punc")
-  # print( punc )
-  
-  x<- gsub('([[:alpha:]])\\1+', '\\1', x)
-  
-  words <- str_replace_all(x, "[[:punct:]]", "")
-  words <- strsplit( words , split = "\\s+" )[[1]]
-  words <- words[words != ""]
-  
-  
-  
-  # print("words")
-  # print(words)
-  # new_rs
-  # new_rs
-  
-  # data(dict)
-  
-  # for ( i in 1:length(words) ){
-  #   # print(i)
-  #   
-  #   words[i] <- correct( words[i] )
-  # }
-  
-  
-  comb <- append( words , save_punc )
-  # new_rs
-  comb <- paste(comb, collapse = " ")
-  return(comb[1])
-}
-
-
-
 
 clean_punc <- function(x){
   
@@ -167,54 +59,48 @@ clean_punc <- function(x){
         
         words <- words[ words!= words[i] ]   
         
-        # print("yes")
-        # words <- words[ names(words) %in% "www" == FALSE]
-        
       }
       if( grepl( ".com" , words[i] , fixed = TRUE  ) ){
         
         words <- words[ words!= words[i] ]   
-        
-        # print("yes")
-        # words <- words[ names(words) %in% "www" == FALSE]
         
       }
       if( grepl( ".net" , words[i] , fixed = TRUE  ) ){
         
         words <- words[ words!= words[i] ]   
         
-        # print("yes")
-        # words <- words[ names(words) %in% "www" == FALSE]
-        
       }
       if( grepl( ".sg" , words[i] , fixed = TRUE  ) ){
         
         words <- words[ words!= words[i] ]   
-        
-        # print("yes")
-        # words <- words[ names(words) %in% "www" == FALSE]
         
       }
       
     }
     
   }
+  
   x <- paste( words , collapse = " ")
   punc <- str_replace_all(x, "[[:alnum:]]", "" )
   
-  
+  # print( punc )
   # assigning values to smle and sadd based on data from the emoticons dataset
   for( i in 1: length(smle) ){
+    # print(smle[i])
     if( grepl(  smle[i] , punc, fixed = TRUE) ){
       save_punc$smle[1] <- 1
+      # print("smle")
+      # val <- TRUE
       break
     }
   }
   
   for( i in 1: length(sadd) ){
+    # print(sadd[i])
     if( grepl(  sadd[i] , punc, fixed = TRUE) ){
       save_punc$sadd[1] <- 1
-      val <- TRUE
+      # print('sadd')
+      # val <- TRUE
       break
     }
   }
@@ -227,72 +113,58 @@ clean_punc <- function(x){
   
   # extract words with 3 consecutively repeating characters and correct them
   wrong_words <- unlist( str_extract_all(x, "\\p{L}*(\\p{L})\\1\\1+\\p{L}*" ) )
-  print( wrong_words )
+  # print( wrong_words )
   correct_words <- list()
   if ( length( wrong_words) >= 1 ){
     for ( i in 1:length(wrong_words )){
       
       wword <- as.character (wrong_words[i])
-      # print( class(wword) )
       
       wword <-  as.character( gsub('([[:alpha:]])\\1\\1+', '\\1', wword ) )
-      # print( class(wword))
-      correct_words[i] <- wword 
-      # print( class( correct_words[i] ) )
-      # correct_words[i]
-      # correct_words[i] <- 
-      # print( "correct_words[i]")
-      # print( correct_words[[i]] )
-      correct_words[i] <- correct( correct_words[[i]] )
-      # print( "correct_words[[i]]")
-      # print( correct_words[[i]] )
-      # correct_words[i]
       
+      correct_words[i] <- wword 
+      
+      correct_words[i] <- correct( correct_words[[i]] )
       
     }
     
   }
   
-  # print( "correct_words")
-  # print( correct_words )
   
   words <- str_replace_all(x, "[[:punct:]]", "")
   #list of words
-  words <- strsplit( words , split = "\\s+" )[[1]]
-  
+  # print(words)
+  words <- strsplit( words , split = " " )[[1]]
+  # print(words)
   #remove wrong words
   words<-words[ words %in% wrong_words == FALSE]  
   #add in correct words
+  # print(words)
   words <- append( words , correct_words )
-  
+  # print(words)
   
   words <- words[ words != ""]
-  words <- paste(words, collapse = " ")
+  # print(words)
+  words <- paste( words, collapse = " ")
   
   out <- list()
   
   out$words <- words
   out$punc <- save_punc 
   
-  # print( "out$punc")
-  # print( out$punc )
-  
   return(out)
 }
 
+str3 <- clean_punc( " yeeeeah .. . and it was in into too  seen Empire top 100 computer games? http://www.empireonline.com/100greatestgames/" )
+
+print( str3$words)
+
 ## test code for clean_punc function
+# clean_punc( "45 minutes until im off from work. I guess i`ll go back to work in 15 minutes. It`s slow today thank god for one of those days" )
 # clean_punc( " yeeeeah .. . and it was in into too  seen Empire top 100 computer games? http://www.empireonline.com/100greatestgames/" )
 # clean_punc("i kno look ? :) (: i doooo!!!!!!!!!! yall partyin with out me htttp://www.google.com" )
 # clean_punc( "fuckkk i need sleepppppppp lol, happy mothers day mummy" )
 # clean_punc("heyheyheyheyehyeyyyyyyyyyyyyyyyy")
-
-#test clean_string
-# str1 <- " just looove  bf  u  awesoome!!!!:) [hannah montana  movie  amazing  best movie ever!!]  // cool http://gykd.net"
-# 
-# class(str)
-# ls <- clean_punc( str1 )
-# ls$words
-# ls$punc
 
 #uncomment from here 
 # str1
@@ -333,14 +205,9 @@ prep_data <- function(x){
   for( i in 1:length(corpus) ) {
     # for( i in 1:100 ){
     
-    print( paste0(i , " out of " , length(corpus) , " done") )
+    # print( paste0(i , " out of " , length(corpus) , " done") )
     as.character( corpus[[ i ]] )
     corpus_test <- corpus[[i]][[1]]
-    
-    # corpus_test
-    # str
-    #
-    # str1 <- " just looove  bf  u  awesoome!!!! [hannah montana  movie  amazing  best movie ever!!]  // cool http://gykd.net"
     
     class(str)
     ls <- list()

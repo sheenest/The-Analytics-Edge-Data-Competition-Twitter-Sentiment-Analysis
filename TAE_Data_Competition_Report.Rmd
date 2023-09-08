@@ -1,13 +1,13 @@
 ---
 title: "TAE Data Competition"
-author: "Tan Zen Sheen"
+author: "Chirag Shivakumar and Tan Zen Sheen"
 date: "2023-09-02"
 output: html_document
 ---
 
 # The Analytics Edge Data Competition, Twitter Sentiment Analysis
 
-In this project, we are given a test and train dataset of Tweets from twitter.
+In this project, we are given a labelled dataset of Tweets from twitter.
 In the train.csv data, tweets have been labelled with a Sentiment score of -1, 0, or 1, representing sentiments of negative, neutral or positive respectively.
 
 Through applying various Machine Learning Techniques, my team and I are tasked to create a data model to use the Data Model to make predictions on train.csv dataset.
@@ -23,36 +23,68 @@ library(ROCR)
 library(caTools)
 library(glmnet)
 library(nnet)
-
+library(randomForest)
+library(keras)
+library(deepviz)
 ```
 
 # Data Cleaning and Processing
-In cleaning and processing the data of tweets, we decided to go one step further, extracting information of emoticons from the tweets and assigning a value of a certain emotion associated with the emoticon.
+In cleaning and processing the data of tweets, we decided to go one step further, extracting information of emoticons from the tweets, removing website links, and detect some incorrectly spelled words.
+The entire script for Data Cleaning and Processing is saved in clean.R.
 
 ```{r cars}
 source("clean.R")
 ```
 
-## How it works
+# How clean.R it works
+
+## Extracting of punctuations and emoticons from Tweets and assigning value to new columns that represent certain emotions.
+Besides organizing the streets of tweets into a dataframe that stores the frequency of words in each tweet, clean.R helps to extract the emoticons in the tweets by detecting them and assigning a value to its associated emotion.
+
+To do this, we add new columns of sadd, smle, qsnm, excl and dott to the output dataframe. The new columns are computed to have the following meanings:
+*- sadd: Means 'sad' and refers to the emotion of sadness. This column will have a value of 1 when there is an emoji that represents the emotion of sadness, anger or disappointment. *
+*- smle: Means 'smile' and refers to the emotion of happiness. This column will have a value of 1 when there is an emoji that represents the emotion of happiness or excitement. *
+*- excl: Refers to the exclamation mark "!". This column will have a value of 1 when there is a "!" in the tweet. *
+*- qsm : Refers to question mark "?". This column will have a value of 1 when there is a "?" in the tweet.*
+*- dott: Refers to multiple continuous dots in tweets. This column will have a value of 1 when there are consecutive periods in a tweet(I.e. "...")*
+
+Using the emoticons data set from https://github.com/matbun/Emoticons-dataset , tweets from the data are being screened through to detect emoticons. The emoticons dataset has actually been labelled with values of 1 or -1, representing positive and negative sentiments respectively.
+Using these labels, we associate the positive emotions (that are labelled '1') to have a smle value of 1 and a negative emoticons (that are labelled '-1') to have the sadd value of 1. If there are no emoticons present in the tweet, the 'smle' and 'sadd' columns would be labelled 0.
+
+```{r}
+emo_data <- read.csv("emoticons_long.csv")
+print( head(emo_data))
+```
+
+## Identifying punctuation through clean_punc function from clean.R
+In clean.R, the *clean_punc* function takes in a string and outputs a list which contains *"$words'* and *'$punc'*.
+The *'$punc'* output variable stores the computed columns of *'sadd'*, *'smle'*, *'qsnm'*, *'excl'*, and *'dott'*.
+
 ```{r}
 # test code for clean_punc function
-# clean_punc( " yeeeeah .. . and it was in into too  seen Empire top 100 computer games? http://www.empireonline.com/100greatestgames/" )
-# clean_punc("i kno look ? :) (: i doooo!!!!!!!!!! yall partyin with out me htttp://www.google.com" )
-# clean_punc( "fuckkk i need sleepppppppp lol" )
-clean_punc("heyheyheyheyehyeyyyyyyyyyyyyyyyy")
+
+str1 <- clean_punc('I love Machine Learning!:)')
+print( str1$punc)
+
+str2 <- clean_punc('Why is my model takign so long to train...? :(')
+print( str2$punc)
+
 ```
 
+## Correction of words with 3 of the same consecutive characters and removal of website url in Tweets.
+As the tweets contain numerous typos, it is wise to do some cleaning of the tweets to ensure that the words extracted are correcly spelled as much as possible.
+As running a spelling checker through all the words in the tweet would be computationally very intensive, we decided to simplify this by simply checking for words that have 3 of the same consecutive letters.
+Website URLs are also removed from the tweets as they are not important for the prediction of the model
 ```{r}
-#test clean_string
-str1 <- " just looove  bf  u  awesoome!!!!:) [hannah montana  movie  amazing  best movie ever!!]  // cool http://gykd.net"
-# 
-class(str1)
-ls <- clean_punc( str1 )
-ls$words
-ls$punc
-str1
-```
 
+str3 <- clean_punc( " yeeeeah .. . and it was in into too  seen Empire top 100 computer games? http://www.empireonline.com/100greatestgames/" )
+
+print( str3$words)
+
+str4 <- clean_punc("i kno look ? :) (: i doooo!!!!!!!!!! yall partyin with out me htttp://www.google.com" )
+print( str4$words)
+
+```
 
 ## Execute Cleaning and Data Processing on test and train datasets.
 Note of Caution: Running the code below will take 20-30 minutes
@@ -60,10 +92,10 @@ In the original competition, an unlabelled test data set, test_data.csv is given
 The model will be trained on the splitted training data and tested on the splitted testing data.
 ```{r}
 
-# train <- prep_data( "train.csv" )
-# train_data <- train$data
-# train_data$sentiment <- train$sentiment
-# write.csv( train_data,"train_data.csv", row.names = FALSE)
+train <- prep_data( "train.csv" )
+train_data <- train$data
+train_data$sentiment <- train$sentiment
+write.csv( train_data,"train_data.csv", row.names = FALSE)
 
 
 ```
@@ -72,6 +104,31 @@ The model will be trained on the splitted training data and tested on the splitt
 ```{r}
 data <- read.csv("train_data.csv")
 
+
+# Function to get unique values of a column
+get_unique_values <- function(column) {
+  unique_values <- unique(column)
+  return(unique_values)
+}
+
+# Initialize an empty list to store unique values for each column
+unique_values_list <- list()
+
+# Flatten the dataframe into a vector
+data_vector <- unlist(subset(data , select = -c(sentiment) ))
+
+# Get unique values from the vector
+unique_values <- unique(data_vector)
+
+print( unique_values )
+
+has_null_values <- anyNA(data)
+# Print the result (TRUE if any missing values, FALSE otherwise)
+print(has_null_values)
+
+
+# twitter$tweet[25]
+data[25,]
 set.seed(123)
 split_indices  <- sample.split(data , SplitRatio=0.7)
 
@@ -128,7 +185,7 @@ modelNeutral <- glm(Neutral~0+., data=train_Neutral, family=binomial)
 # summary(modelNeutral) # AIC: 17588
 
 neutral_pVal <- summary(modelNeutral)$coefficients[,4] #p values
-neutral_sigVal <- names(neutral_pVal[neutral_pVal <= 0.05]) #5% level
+neutral_sigVal <- names(neutral_pVal[neutral_pVal <= 0.01]) #1% level
 
 modelNeutral_2 <- glm(as.formula(
   paste0("Neutral ~ ",
@@ -145,7 +202,7 @@ modelPositive <- glm(Positive~0+., data=train_Non_Neutral, family=binomial)
 
 
 positive_pVal <- summary(modelPositive)$coefficients[,4] #p values
-positive_sigVal <- names(positive_pVal[positive_pVal <= 0.1]) #10% level
+positive_sigVal <- names(positive_pVal[positive_pVal <= 0.01]) #1% level
 
 modelPositive_2 <- glm(as.formula(
   paste0("Positive ~ ",
@@ -265,17 +322,12 @@ test_data[test_data$Predicted_Sentiment == 2, ] <- non_neutral_tweets
 ```
 
 ```{r}
-# Calculate the Final Accuracy of both the Logistic Models Combined together 
-correct <- 0
+tab_lg <- table(test_data$Predicted_Sentiment, test_data$sentiment)
 
-for (i in 1:nrow(test_data)) {
-  if (test_data$sentiment[i] == test_data$Predicted_Sentiment[i]) {
-    correct <- correct + 1
-  }
-}
+print(tab_lg )
+accuracy_lg = (tab_lg[1,1]+tab_lg[2,2] + tab_lg[3,3])/sum(tab_lg)
 
-accuracy <- correct / nrow(test_data)
-accuracy
+accuracy_lg
 ```
 
 ```{r}
@@ -287,18 +339,12 @@ model <- multinom(sentiment ~ ., data = data)
 
 ```
 
-
-
-
-
 ## Commentary
 
 
 # Second Model: Random Forest 
 This model takes a while to train.
 ```{r}
-print( head(train_data))
-library(randomForest)
 
 # subset columns in train so that it only has the prediction column, sentiment, and the rest of the words
 train_rf <- train_data
@@ -338,48 +384,140 @@ Accuracy # [1] 0.651129
 # Model 3 Neural Network
 ```{r}
 
-library(keras)
-
 # subset columns in train so that it only has the prediction column, sentiment, and the rest of the words
 train_nn <- train_data
+X_train = subset(train_nn , select = -c(sentiment) )
+
+# check data type of features is integer
+# column_types <- all(sapply(X_train, is.integer))
+# print(column_types )
+Y_train = to_categorical( subset(train_nn , select = c(sentiment) ) , num_classes = 3 )
+# print(Y_train)
+
+print( ncol(X_train))
+print( ncol(Y_train))
 
 
-model <- keras_model_sequential() %>%
-  layer_dense(units = 64, activation = 'relu', input_shape = dim(X)[2]) %>%
-  layer_dense(units = 32, activation = 'relu') %>%
-  layer_dense(units = 1, activation = 'sigmoid')
 
 
-model %>% compile(
+# print( length( unique( colnames(X_train) ) )==  length( colnames(X_train) ) )
+# print( class(X_train[,1]) )
+
+test_nn <- test_data
+X_test = subset(test_nn , select = -c(sentiment , Predicted_Sentiment ) )
+# test_nn$sentiment
+Y_test = to_categorical( subset(test_nn , select = c(sentiment) ) , num_classes = 3)
+print( ncol(X_test))
+print( ncol(Y_test))
+
+max_category_value <- 1
+input_dim <- ncol(X_train)
+embedding_dim <- 128
+
+nn_model = keras_model_sequential()
+
+nn_model %>%
+  layer_dense(units = 64, activation = 'relu' , input_shape = input_dim ,
+              bias_regularizer=regularizer_l1(l=0.1),
+              activity_regularizer=regularizer_l1(l=.05) ) %>%
+  
+  layer_dense(units = 64, activation = 'relu',
+              bias_regularizer=regularizer_l1(l=0.1),
+              activity_regularizer=regularizer_l1(l=.05)) %>%
+  layer_dense(units = 3 , activation = 'softmax')
+
+nn_model %>% compile(
+  loss      = 'categorical_crossentropy',
+  optimizer = optimizer_rmsprop(),
+  metrics   = c('accuracy')
+)
+nn_model %>% plot_model()
+summary(nn_model)
+
+
+
+history <- nn_model %>% fit(
+  x = as.matrix( X_train ) ,
+  y = Y_train ,
+  epochs = 100,  # Number of training iterations
+  batch_size = 128,  # Batch size for gradient updates
+  validation_split = 0.2  # Split data into training and validation sets
+)
+
+performance_nn = nn_model %>% evaluate(as.matrix( X_test), Y_test)
+print(performance_nn)
+accuracy <- performance_nn[2]
+print(str_c("Accuracy of the Neural Network model was ",round(accuracy*100,0),"% on the test data"))
+
+
+```
+```{r}
+# Load the required libraries
+library(keras)
+
+# Example data with categorical values (0 or 1) and column names
+# Replace this with your actual data
+input_data <- as.data.frame(matrix(sample(0:3, ncol(X_train) * 14410, replace = TRUE), ncol = ncol(X_train)))
+colnames(input_data) <- colnames(X_train)
+
+print( length(colnames(X_train)) )
+print(ncol(X_train) )
+
+# Example labels (categorical: -1, 0, or 1)
+# Replace this with your actual labels
+labels <- sample(-1:1, 14410, replace = TRUE)
+
+
+# print(input_data)
+# print(labels)
+# Define the input dimension (number of features)
+input_dim <- ncol(input_data)
+
+# Create a sequential neural network model
+nn_model <- keras_model_sequential()
+
+# Add a dense layer (adjust the number of units and activation as needed)
+nn_model %>%
+  layer_dense(units = 128, activation = 'relu', input_shape = c(input_dim))
+
+# Add more hidden layers as needed
+nn_model %>%
+  layer_dense(units = 64, activation = 'relu') %>%
+  layer_dense(units = 32, activation = 'relu')
+
+# Output layer with 3 units for -1, 0, and 1 categories
+nn_model %>%
+  layer_dense(units = 3, activation = 'softmax')
+
+# Compile the model
+nn_model %>% compile(
   optimizer = 'adam',
-  loss = 'binary_crossentropy',  # For binary classification
+  loss = 'categorical_crossentropy',  # Use categorical cross-entropy for multiclass classification
   metrics = c('accuracy')
 )
 
-history <- model %>% fit(
-  x = subset(train_rf ,  ),
-  y = sentiment,
+# Convert labels to one-hot encoding (assuming labels are -1, 0, or 1)
+labels <- to_categorical(labels + 1, num_classes = 3)  # +1 to map -1, 0, 1 to 0, 1, 2
+
+# Train the model (replace 'input_data' and 'labels' with your actual data and labels)
+history <- nn_model %>% fit(
+  x = as.matrix(input_data),
+  y = labels,
   epochs = 100,  # Number of training iterations
   batch_size = 32,  # Batch size for gradient updates
   validation_split = 0.2  # Split data into training and validation sets
 )
 
-evaluation <- model %>% evaluate(
-  x = X_test,
-  y = y_test
-)
-
-cat("Accuracy:", evaluation$accuracy, "\n")
-
-predictions <- model %>% predict(X_new_data)
 
 ```
 
 
-
-## Predictions
+## Predictions for Neural Network Model
 ```{r}
-Accuracy = (tab_rf[1,1]+tab_rf[2,2])/sum(tab_rf)
-Accuracy # [1] 0.823225
-
+performance_nn = nn_model %>% evaluate(as.matrix( X_test), Y_test)
+print(performance_nn)
+print(str_c("Accuracy of the Neural Network model was ",round(accuracy*100,0),"% on the test data"))
 ```
+
+
+# Conclusion
