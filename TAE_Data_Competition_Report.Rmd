@@ -1,19 +1,21 @@
 ---
-title: "TAE Data Competition"
+title: "The Analytics Edge Data Competition, Twitter Sentiment Analysis"
 author: "Chirag Shivakumar and Tan Zen Sheen"
 date: "2023-09-02"
 output: html_document
 ---
 
-# The Analytics Edge Data Competition, Twitter Sentiment Analysis
-
 In this project, we are given a labelled dataset of Tweets from twitter.
-In the train.csv data, tweets have been labelled with a Sentiment score of -1, 0, or 1, representing sentiments of negative, neutral or positive respectively.
+In the *train.csv* data, tweets have been labelled with a Sentiment score of 0, 1, or 2, representing sentiments of negative, neutral or positive respectively.
 
-Through applying various Machine Learning Techniques, my team and I are tasked to create a data model to use the Data Model to make predictions on train.csv dataset.
+Through applying various Machine Learning Techniques, my team and I are tasked to create a data model predict the sentiments of the tweets.
+
+```{r setup, include=FALSE} 
+knitr::opts_chunk$set(echo = TRUE,warning=FALSE, message=FALSE)
+```
 
 # Load Packages needed for this Project, install if needed.
-```{r}
+```{r error=TRUE, message=FALSE}
 library(stringr) 
 library(spellcheckr)
 library(dplyr)
@@ -22,6 +24,7 @@ library(SnowballC)
 library(ROCR)
 library(caTools)
 library(glmnet)
+library(ROCR)
 library(nnet)
 library(randomForest)
 library(keras)
@@ -30,34 +33,41 @@ library(deepviz)
 
 # Data Cleaning and Processing
 In cleaning and processing the data of tweets, we decided to go one step further, extracting information of emoticons from the tweets, removing website links, and detect some incorrectly spelled words.
-The entire script for Data Cleaning and Processing is saved in clean.R.
+The entire script for Data Cleaning and Processing is saved in ```clean.R```.
 
-```{r cars}
+```{r}
 source("clean.R")
 ```
 
 # How clean.R it works
 
 ## Extracting of punctuations and emoticons from Tweets and assigning value to new columns that represent certain emotions.
-Besides organizing the streets of tweets into a dataframe that stores the frequency of words in each tweet, clean.R helps to extract the emoticons in the tweets by detecting them and assigning a value to its associated emotion.
+Besides organizing the streets of tweets into a dataframe that stores the frequency of words in each tweet, ```clean.R``` helps to extract the emoticons in the tweets by detecting them and assigning a value to its associated emotion.
 
-To do this, we add new columns of sadd, smle, qsnm, excl and dott to the output dataframe. The new columns are computed to have the following meanings:
-*- sadd: Means 'sad' and refers to the emotion of sadness. This column will have a value of 1 when there is an emoji that represents the emotion of sadness, anger or disappointment. *
-*- smle: Means 'smile' and refers to the emotion of happiness. This column will have a value of 1 when there is an emoji that represents the emotion of happiness or excitement. *
-*- excl: Refers to the exclamation mark "!". This column will have a value of 1 when there is a "!" in the tweet. *
-*- qsm : Refers to question mark "?". This column will have a value of 1 when there is a "?" in the tweet.*
-*- dott: Refers to multiple continuous dots in tweets. This column will have a value of 1 when there are consecutive periods in a tweet(I.e. "...")*
+To do this, we add new columns of sadd, smle, qsnm, excl and dott to the output dataframe. The new columns are computed to have the following meanings: 
+
+* *sadd*: Means 'sad' and refers to the emotion of sadness. This column will have a value of 1 when there is an emoji that represents the emotion of sadness, anger or disappointment. 
+
+* *smle*: Means 'smile' and refers to the emotion of happiness. This column will have a value of 1 when there is an emoji that represents the emotion of happiness or excitement. 
+
+* *excl*: Refers to the exclamation mark "!". This column will have a value of 1 when there is a "!" in the tweet. 
+
+* *qsm* : Refers to question mark "?". This column will have a value of 1 when there is a "?" in the tweet.
+
+* *dott*: Refers to multiple continuous dots in tweets. This column will have a value of 1 when there are consecutive periods in a tweet(I.e. "...")
 
 Using the emoticons data set from https://github.com/matbun/Emoticons-dataset , tweets from the data are being screened through to detect emoticons. The emoticons dataset has actually been labelled with values of 1 or -1, representing positive and negative sentiments respectively.
+
 Using these labels, we associate the positive emotions (that are labelled '1') to have a smle value of 1 and a negative emoticons (that are labelled '-1') to have the sadd value of 1. If there are no emoticons present in the tweet, the 'smle' and 'sadd' columns would be labelled 0.
 
 ```{r}
 emo_data <- read.csv("emoticons_long.csv")
-print( head(emo_data))
+print( head(emo_data) )
 ```
 
 ## Identifying punctuation through clean_punc function from clean.R
-In clean.R, the *clean_punc* function takes in a string and outputs a list which contains *"$words'* and *'$punc'*.
+In clean.R, the ```clean_punc``` function takes in a string and outputs a list which contains *"words'* and *'punc'*.
+
 The *'$punc'* output variable stores the computed columns of *'sadd'*, *'smle'*, *'qsnm'*, *'excl'*, and *'dott'*.
 
 ```{r}
@@ -72,9 +82,12 @@ print( str2$punc)
 ```
 
 ## Correction of words with 3 of the same consecutive characters and removal of website url in Tweets.
-As the tweets contain numerous typos, it is wise to do some cleaning of the tweets to ensure that the words extracted are correcly spelled as much as possible.
-As running a spelling checker through all the words in the tweet would be computationally very intensive, we decided to simplify this by simply checking for words that have 3 of the same consecutive letters.
-Website URLs are also removed from the tweets as they are not important for the prediction of the model
+As the tweets contain numerous typos, it is wise to do some cleaning of the tweets to ensure that the words extracted are correctly spelled as much as possible.
+
+As running a spelling checker through all the words in the tweet would be computationally very intensive, we decided to simplify this by simply checking for words that have 3 of the same consecutive letters, then correcting their spelling.
+
+Website URLs are also removed from the tweets as they are not important for the prediction of the model.
+
 ```{r}
 
 str3 <- clean_punc( " yeeeeah .. . and it was in into too  seen Empire top 100 computer games? http://www.empireonline.com/100greatestgames/" )
@@ -85,26 +98,64 @@ str4 <- clean_punc("i kno look ? :) (: i doooo!!!!!!!!!! yall partyin with out m
 print( str4$words)
 
 ```
+The ```clean.r``` script  also also changes the labels of data such that the Sentiment values are now -1, 0, and 1 to represent negative, neutral and positive tweets, from its previous values of 0, 1, and 2.
 
-## Execute Cleaning and Data Processing on test and train datasets.
-Note of Caution: Running the code below will take 20-30 minutes
-In the original competition, an unlabelled test data set, test_data.csv is given for us to make our predictions on, which would be submitted on to Kaggle. As the labels from the test data are not available, we shalll ignore the test data and instead split the labelled data for training and testing. 
-The model will be trained on the splitted training data and tested on the splitted testing data.
+
+# Execute Cleaning and Data Processing on test and train datasets.
+*Note of Caution: Running the code below will take about 5 minutes.*
+
+Running the code below will execute clean.R on the ```train.csv```, screening through every tweet with the ```clean_punc``` function as demonstrated above, and preparing the data as a dataframe for the training and testing of the model. This will overwrite and save the cleaned data as ```data.csv```. 
+
+In the original competition, an unlabelled test data set, test.csv is given for us to make our predictions on, and submit out predictions onto Kaggle. As the labels from the test data are not available, we shalll ignore the test data and instead split the labelled data for training and testing. 
 ```{r}
-
-train <- prep_data( "train.csv" )
-train_data <- train$data
-train_data$sentiment <- train$sentiment
-write.csv( train_data,"train_data.csv", row.names = FALSE)
-
-
+# train <- prep_data( "train.csv" )
+# train_data <- train$data
+# train_data$sentiment <- train$sentiment
+# write.csv( train_data,"data.csv", row.names = FALSE)
 ```
 
 # Load Processed Data and split data for Training and Testing
 ```{r}
 data <- read.csv("train_data.csv")
+set.seed(123)
+split_indices  <- sample.split(data , SplitRatio=0.7)
+train_data <- data[split_indices, ]
+test_data <- data[!split_indices, ]
+
+```
+
+# Understanding the data
+
+Let us look at the first few rows and last few columns of the testing and training dataset.
+```{r}
+print(head(train_data)[ , (ncol(train_data) - 9):ncol(train_data) ])
+
+```
+
+```{r}
+
+print( "Print first few rows and last 10 columns of test data")
+print( head(test_data)[ , (ncol(test_data) - 9):ncol(test_data) ])
+
+```
+
+Before proceeding with the Machine Learning models, some things to understand and check about the data are:
+
+* What are the dimensions of the dataset?
+
+* What are the possible frequency values of words that can show up in each word column?
+
+* Are there any NULL values in the dataset?
+
+```{r}
+
+# Getting dimensions of both datasets
+print( paste0("The test data set has " , nrow(test_data) , " rows and " , ncol(test_data) , " columnes."  ) )
+
+print( paste0("The train data set has " , nrow(train_data) , " rows and " , ncol(train_data) , " columnes." ))
 
 
+# Getting unique values of original data 
 # Function to get unique values of a column
 get_unique_values <- function(column) {
   unique_values <- unique(column)
@@ -120,230 +171,235 @@ data_vector <- unlist(subset(data , select = -c(sentiment) ))
 # Get unique values from the vector
 unique_values <- unique(data_vector)
 
-print( unique_values )
 
+print( paste0("The unsplitted data has " , length( unique_values ) , " unique values." ) )
+print( paste0("The unique values are " , paste(unique_values , collapse = " ") , ".") )
+
+
+# Check for NULL values
 has_null_values <- anyNA(data)
 # Print the result (TRUE if any missing values, FALSE otherwise)
-print(has_null_values)
-
-
-# twitter$tweet[25]
-data[25,]
-set.seed(123)
-split_indices  <- sample.split(data , SplitRatio=0.7)
-
-train_data <- data[split_indices, ]
-test_data <- data[!split_indices, ]
-
+print(paste0("Check for NULL values: " , has_null_values,"." ) )
 ```
 
+We are now confident that the data is ready to be used for model training and testing. 
 
-# First Model
-In the first model, we will predicting neutral and non-neutral (positive or negative) tweets, before predicting positive and negative tweets.
 
-The motivation behind this model is that based on the principle that tweets that are less likely to negative are more likely to be positive, and vice versa.
+# Model 1: Double Logistic Regression
+In the first model, we will be using Logistic Regression for predicting neutral and non-neutral (positive or negative) tweets, before predicting positive and negative tweets.
 
-The methodology of this model is to first create a subset of the 
+The motivation behind this model is that based on the principle that tweets that are less likely to negative are more likely to be positive, and vice versa. Thus, through predicting if data is neutral or non-neutral first, we can filter out the predicted neutral rows from the data, and predict if the rest of the data is positive or negative.
 
 
 ## Data Preparation for 1st Model
+Before training this model, we need to prepare 2 datasets for 2 models:
+
+* Neutral train and test datasets : Contains the entire data, labelled by whether they are neutral or non-neutral. 
+
+* Positive train and test datasets: Contains a subset of the entire data that is non-neutral, labelled by whether they are positive or negative. 
+
 ```{r}
-# make copies of train and data so as to modify orignial data
+# make copies of train and data so we do not modify the orignial data
 train_lr <- train_data
 test_lr <- test_data
 
 # Assign Positive, Neutral and Negative columns to training data, based on Sentiment Scores
 train_lr$Neutral <-as.factor(train_data$sentiment==0)
-train_lr$NonNeutral <-as.factor(train_data$sentiment!=0)
-
 # Do the same for test data, for testing of model
 test_lr$Neutral <-as.factor(test_data$sentiment==0)
-test_lr$NonNeutral <-as.factor(test_data$sentiment!=0)
+
 
 # Data for Neutral Model
-train_Neutral <- subset( train_lr , select = -c(sentiment,NonNeutral) )
-test_Neutral <- subset( test_lr , select = -c(sentiment,NonNeutral) )
+train_Neutral <- subset( train_lr , select = -c(sentiment) )
+test_Neutral <- subset( test_lr , select = -c(sentiment) )
+
+
 
 # Data for Non-Neutral Model
 # remove neutral tweet, so we are now left with positive and negative tweets
-train_Non_Neutral <- train_lr[ train_lr$NonNeutral == TRUE , ]
-test_Non_Neutral <- test_lr[ test_lr$NonNeutral == TRUE , ]
+train_Positive <- train_lr[ train_lr$Neutral == FALSE , ]
+test_Positive <- test_lr[ test_lr$Neutral == FALSE , ]
 
-train_Non_Neutral$Positive <- as.factor( train_Non_Neutral$sentiment == 1 )
-test_Non_Neutral$Positive <- as.factor( test_Non_Neutral$sentiment == 1 )
+train_Positive$Positive <- as.factor( train_Positive$sentiment == 1 )
+test_Positive$Positive <- as.factor( test_Positive$sentiment == 1 )
 
-train_Non_Neutral <- subset( train_Non_Neutral , select = -c(Neutral , NonNeutral , sentiment ) )
-test_Non_Neutral <- subset( test_Non_Neutral , select = -c(Neutral , NonNeutral , sentiment ) )
+train_Positive <- subset( train_Positive , select = -c(Neutral , sentiment ) )
+test_Positive <- subset( test_Positive , select = -c(Neutral , sentiment ) )
+
+# Printing last 10 columns and first 6 rows of train_Neutral and train_positive
+print( head(train_Neutral)[ , (ncol(train_Neutral) - 9):ncol(train_Neutral) ])
+print( head(train_Positive[ , (ncol(train_Positive) - 9):ncol(train_Positive) ]))
 
 ```
 
-## Neutral Model, seperating neutral from non-neutral tweet
+From the above, the data for the neutral model is labelled in the "Neutral" column while the data for the non-neutral model is labelled in the "Positive" column.
+
+In the training of both Logistic Regression Models, we start by training the model on all features, then filtering out the features that have p-values of 0.05 and below to be used for the final model.
+
+## Training of Neutral Model, seperating neutral from non-neutral Tweets.
 ```{r}
-# Logistic regression
-# ---------------------------Neutral Model--------------------------- 
+# Neutral Model
 modelNeutral <- glm(Neutral~0+., data=train_Neutral, family=binomial)
 # summary(modelNeutral) # AIC: 17588
 
+
 neutral_pVal <- summary(modelNeutral)$coefficients[,4] #p values
-neutral_sigVal <- names(neutral_pVal[neutral_pVal <= 0.01]) #1% level
+neutral_sigVal <- names(neutral_pVal[neutral_pVal <= 0.05]) #5% level
 
 modelNeutral_2 <- glm(as.formula(
   paste0("Neutral ~ ",
          paste0(neutral_sigVal, collapse = " + "),
          "-1")  
 ) , data = train_Neutral, family = binomial)
-# summary(modelNeutral_2) #AIC: 17435
+
+print( modelNeutral_2 )
+
+# Testing of results against the original train_Neutral data
+prob_neutal_train <- predict( modelNeutral_2 , type = 'response' )
+predictions_neutral_train <- prediction(prob_neutal_train, train_Neutral$Neutral)
+
+# Plot ROC curve to visualize
+neutral_roc_curve <- performance(predictions_neutral_train, "tpr", "fpr")
+plot(neutral_roc_curve, main = "ROC Curve", print.auc = TRUE,colorize=T,print.cutoffs.at=c(0,0.3,0.4,0.5,0.55,0.6,1),text.adj=c(-.02,1.7))
+
+
+# Based on observation of the ROC curve, we use the cutoff probability value of 0.47 with the highest TPR and lowest FPR.
+
+# As the model needs to higher TRUE Negative for more predicted non-neutral rows to be seperate in the second model, we choose a cut-off value of 0.5 that has a better balance of a lower False Positive Rate
+
+# Make Predictions on train data based on cutoff value of 0.5
+tab_neutral_train <- table(prob_neutal_train>0.5,train_Neutral$Neutral)
+neutral_train_Accuracy = (tab_neutral_train[1,1]+tab_neutral_train[2,2])/sum(tab_neutral_train)
+print( paste0( "The accuracy of the neutral model on the train data is ",round( neutral_train_Accuracy*100 ,2 ) , "%.") )
+
+
+# Testing of results in the test_Neutral data
+# Neutral Model
+prob_neutal_test <- predict( modelNeutral_2 , test_Neutral , type = 'response' )
+tab_neutral_test <- table(prob_neutal_test>0.5,test_Neutral$Neutral) 
+neutral_test_Accuracy = (tab_neutral_test[1,1]+tab_neutral_test[2,2])/sum(tab_neutral_test)
+print( paste0( "The accuracy of the neutral model on the test data is " ,round( neutral_test_Accuracy*100 ,2 ) , "%.") )
+
 ```
 
-## Non-Neutral Model, Seperating Positive tweets from Negative Tweets
+## Training of Positive Model, seperating Positive from Negative Tweets.
 ```{r}
 
-modelPositive <- glm(Positive~0+., data=train_Non_Neutral, family=binomial)
-
+modelPositive <- glm(Positive~0+., data=train_Positive, family=binomial)
 
 positive_pVal <- summary(modelPositive)$coefficients[,4] #p values
-positive_sigVal <- names(positive_pVal[positive_pVal <= 0.01]) #1% level
+positive_sigVal <- names(positive_pVal[positive_pVal <= 0.05]) #5% level
 
 modelPositive_2 <- glm(as.formula(
   paste0("Positive ~ ",
          paste0(positive_sigVal, collapse = " + "),
          "-1")  
-) , data = train_Non_Neutral, family = binomial)
+) , data = train_Positive, family = binomial)
 
-# summary(modelPositive_2) #AIC: 6403.1
+print( modelPositive_2 )
+
+# Testing of results against the original train_Positive data
+prob_positive_train <- predict( modelPositive_2 , type = 'response' )
+predictions_positive_train <- prediction(prob_positive_train, train_Positive$Positive)
+
+# Plot ROC curve to visualize
+positive_roc_curve <- performance(predictions_positive_train, "tpr", "fpr")
+plot(positive_roc_curve, main = "ROC Curve", print.auc = TRUE,colorize=T,print.cutoffs.at=c(0,0.3,0.4,0.5,0.55,0.6,0.7,0.8,1),text.adj=c(-.02,1.7))
+
+# Based on observation of the ROC curve, we use the cutoff probability value of 0.6 with the highest TPR and lowest FPR.
+
+
+# Make Predictions on train data based on cutoff value of 0.51
+tab_Positive_train <- table(prob_positive_train>0.51,train_Positive$Positive)
+positive_train_Accuracy = (tab_Positive_train[1,1]+tab_Positive_train[2,2])/sum(tab_Positive_train)
+positive_train_Accuracy # [1] 0.8312757
+
+
+print( paste0( "The accuracy of the positive model on the train data is " ,round( positive_train_Accuracy*100 ,2 ) , "%.") )
+
+# Testing of results in the test_Positive data
+# Positive Model
+prob_positive_test <- predict( modelPositive_2 ,test_Positive, type = 'response' )
+tab_positive_test <- table(prob_positive_test>0.51,test_Positive$Positive) 
+positive_test_Accuracy = (tab_positive_test[1,1]+tab_positive_test[2,2])/sum(tab_positive_test)
+print( paste0( "The accuracy of the neutral model on the test data is " ,round( positive_test_Accuracy*100 ,2 ) , "%.") )
+
 ```
 
 
-## Model Predictions for 1st Model 
+## Model Predictions for Model1
+In the previous code, we test on the model on the test data after it has been spitted by neutral and non-neutral labels. In reality, we would not not know which rows in the test data are neutral or non-neutral as we have to directly predict the sentiments of positive, negative, and neutral at the same time. 
 
-**NEED HELP TO EDIT THIS PART. MODEL IS MEANT TO RUN ON THE TRAINING DATA WITHOUT SPLITTING THE NEUTRAL AND NON-NEUTRAL LABELS.
-RATHER IT SHOULD HAVE THE PREDICTED NEUTRAL AND NON-NEUTRAL DATA SPLIT FROM THE FIRST MODEL, THEN POSITIVE AND NEGATIVE DATA SPLIT FROM THE SECOND MODEL.
-```{r}
-# # Non-Neutral Model
-# predict_pn <- predict( modelPositive_2, test_Non_Neutral , type = 'response' ) 
-# 
-# tab_pn <- table(predict_pn>0.53,test_Non_Neutral$Positive) #CM
-# Accuracy = (tab_pn[1,1]+tab_pn[2,2])/sum(tab_pn)
-# Accuracy # [1] 0.8128718
-# 
-# library(ROCR)
-# 
-# print( length(predict_pn ))
-# print( length(test_Non_Neutral$Positive) )
-# 
-# predict_pn1 <- prediction( predict_pn , test_Non_Neutral$Positive )
-# perf_pn <- performance(predict_pn1,x.measure="fpr",measure="tpr")
-# plot(perf_pn,colorize=T,print.cutoffs.at=c(0,0.1,0.2,0.3,0.5,0.6,0.7,0.8,0.9,1),text.adj=c(-.02,1.7))
-# 
-# 
-# # Neutral Model
-# predict_nn <- predict( modelNeutral_2 , test_Neutral , type = 'response' ) 
-# tab_nn <- table(predict_nn>0.49,test_Neutral$Neutral) #CM
-# Accuracy = (tab_nn[1,1]+tab_nn[2,2])/sum(tab_nn)
-# Accuracy # [1] 0.69073
-# 
-# print( length(predict_nn) )
-# print( length(test_Neutral$Neutral) )
-# 
-# predict_nn1 <- prediction( predict_nn , test_Neutral$Neutral )
-# perf_nn <- performance(predict_pn1,x.measure="fpr",measure="tpr")
-# plot(perf_nn,colorize=T,print.cutoffs.at=c(0,0.1,0.2,0.3,0.5,0.6,0.7,0.8,0.9,1),text.adj=c(-.02,1.7))
-```
+To do this, we first use the first Neutral Model to predict the neutral data, and filter out the non-neutral data. Then, we use the second Positive Model to predict positive and negative data.
 
-### TEST CODE
 
 ```{r}
+
 # Predict Neutral vs. Non-Neutral Labels
-predict_nn <- predict(modelNeutral_2, test_Neutral, type = 'response')
+lr_prob_neutral <- predict(modelNeutral_2, train_lr, type = 'response')
+tab_neutral <- table( lr_prob_neutral > 0.5, as.factor( train_lr$sentiment == 0))
 
-# Calculate Accuracy for Neutral vs. Non-Neutral
-tab_nn <- table(predict_nn>0.49, test_Neutral$Neutral)
-accuracy_nn <- sum(diag(tab_nn)) / sum(tab_nn)
-accuracy_nn
+# Create a new Column, "Neutral", for separating of neutral and non-neutral predictions
+train_lr$Neutral <- ifelse(lr_prob_neutral > 0.5 , TRUE , FALSE )
+train_lr$Predicted_Sentiment <- ifelse( train_lr$Neutral  == TRUE , 0, 2) # neutral (0) or non-neutral (2: Temporary Value).
 
-# Confusion Matrix for Neutral vs. Non-Neutral
-tab_nn
+# Save predicted non-neutral tweets in a separate dataframe for predicting of positive and negative data in the second model
+non_neutral_tweets <- train_lr[train_lr$Predicted_Sentiment == 2, ]
 
-# Add predicted neutral and non-neutral labels to the test_Neutral dataframe
-test_Neutral$Neutral <- as.factor(predict_nn>0.49)
-test_Neutral$NonNeutral <- as.factor(!predict_nn>0.49)
-
-# ROC Curve for Neutral vs. Non-Neutral
-predict_nn1 <- prediction(predict_nn, test_Neutral$Neutral)
-perf_nn <- performance(predict_nn1, x.measure = "fpr", measure = "tpr")
-plot(perf_nn, colorize = TRUE, print.cutoffs.at = c(0, 0.1, 0.2, 0.3, 0.5, 0.6, 0.7, 0.8, 0.9, 1), text.adj = c(-.02, 1.7))
-```
-
-```{r}
 # Predict Non-Neutral (Positive vs. Negative) Labels
-predict_pn <- predict(modelPositive_2, test_Non_Neutral, type = 'response')
+lr_predict_positive <- predict(modelPositive_2, non_neutral_tweets , type = 'response')
 
-# Calculate Accuracy for Positive vs. Negative
-tab_pn <- table(predict_pn>0.53, test_Non_Neutral$Positive)
-accuracy_pn <- sum(diag(tab_pn)) / sum(tab_pn)
-accuracy_pn
-
-# Confusion Matrix for Positive vs. Negative
-tab_pn
-
-# Add predicted positive and negative labels to the test_Non_Neutral dataframe
-test_Non_Neutral$Positive <- as.factor(predict_pn>0.53)
-test_Non_Neutral$Negative <- as.factor(!predict_pn>0.53)
+non_neutral_tweets$Predicted_Sentiment <- ifelse( lr_predict_positive>0.51 , 1, -1)
 
 
-# ROC Curve for Positive vs. Negative
-predict_pn1 <- prediction(predict_pn, test_Non_Neutral$Positive)
-perf_pn <- performance(predict_pn1, x.measure = "fpr", measure = "tpr")
-plot(perf_pn, colorize = TRUE, print.cutoffs.at = c(0, 0.1, 0.2, 0.3, 0.5, 0.6, 0.7, 0.8, 0.9, 1), text.adj = c(-.02, 1.7))
-```
+# Combining all labels together
+train_lr[train_lr$Predicted_Sentiment == 2, ] <- non_neutral_tweets
 
-
-
-
-```{r}
-# First perform binary classification to predict whether a tweet is neutral or non-neutral
-# Then for the non-neutral tweets, you can further classify them as positive or negative.
-
-# Step 1: Binary Classification for Neutral vs. Non-Neutral
-# Use this modelNeutral_2 model to predict probabilities of being neutral for all tweets in your test dataset (test_data).
-predict_neutral <- predict(modelNeutral_2, test_data, type = 'response')
-test_data$Predicted_Sentiment <- ifelse(predict_neutral > 0.53, 0, 2) # neutral (0) or non-neutral (2: Temporary Value).
-
-# Stap 2: Binary Classification for Positive vs. Negative (Non-Neutral Tweets Only)
-non_neutral_tweets <- test_data[test_data$Predicted_Sentiment == 2, ]
-
-# Use the modelPositive_2 model to predict probabilities of being positive for the non-neutral tweets.
-predict_positive <- predict(modelPositive_2, non_neutral_tweets, type = 'response')
-non_neutral_tweets$Predicted_Sentiment <- ifelse(predict_positive > 0.5, 1, -1) # positive (1) or negative (-1)
-
-# Step 3: Combine Results
-# Replace the Predicted_Sentiment values for non-neutral tweets in the original dataframe
-test_data[test_data$Predicted_Sentiment == 2, ] <- non_neutral_tweets
-```
-
-```{r}
-tab_lg <- table(test_data$Predicted_Sentiment, test_data$sentiment)
-
+tab_lg <- table(train_lr$Predicted_Sentiment, train_lr$sentiment)
 print(tab_lg )
-accuracy_lg = (tab_lg[1,1]+tab_lg[2,2] + tab_lg[3,3])/sum(tab_lg)
 
-accuracy_lg
+accuracy_lg_test = (tab_lg[1,1]+tab_lg[2,2] + tab_lg[3,3])/sum(tab_lg)
+print(paste0("The accuracy of the Dual Logistic Regression is ", round( accuracy_lg_test*100,2 ) , "% on the train data" ) )
+
 ```
+When tested on the train data, the Dual Logistic Regression model only got an accuracy of 55.83%. With this, we would not be expecting an accuracy that is much lower when the model is used on the test data.
+
 
 ```{r}
-# Additional 
-# Combine all 3 models into one model and try finding accuracy 
 
-# Touch later 
-model <- multinom(sentiment ~ ., data = data)
+# Predict Neutral vs. Non-Neutral Labels
+lr_prob_neutral <- predict(modelNeutral_2, test_lr, type = 'response')
+tab_neutral <- table( lr_prob_neutral > 0.5, as.factor( test_lr$sentiment == 0))
+print( tab_neutral )
+
+# Create a new Column, "Neutral", for separating of neutral and non-neutral predictions
+test_lr$Neutral <- ifelse(lr_prob_neutral > 0.5 , TRUE , FALSE )
+test_lr$Predicted_Sentiment <- ifelse( test_lr$Neutral  == TRUE , 0, 2) # neutral (0) or non-neutral (2: Temporary Value).
+
+# Save predicted non-neutral tweets in a separate dataframe for predicting of positive and negative data in the second model
+non_neutral_tweets <- test_lr[test_lr$Predicted_Sentiment == 2, ]
+
+# Predict Non-Neutral (Positive vs. Negative) Labels
+lr_predict_positive <- predict(modelPositive_2, non_neutral_tweets , type = 'response')
+
+non_neutral_tweets$Predicted_Sentiment <- ifelse( lr_predict_positive>0.51 , 1, -1)
+
+
+# Combining all labels together
+test_lr[test_lr$Predicted_Sentiment == 2, ] <- non_neutral_tweets
+
+tab_lg <- table(test_lr$Predicted_Sentiment, test_lr$sentiment)
+print(tab_lg )
+
+accuracy_lg_test = (tab_lg[1,1]+tab_lg[2,2] + tab_lg[3,3])/sum(tab_lg)
+print(paste0("The accuracy of the Dual Logistic Regression is ", round( accuracy_lg_test*100,2 ) , "% on the test data" ) )
 
 ```
+Despite the low accuracy when tested on the train data, the accuracy results of the model was fairly consistent when tested on the test data.
 
-## Commentary
+# Model 2: Random Forest 
 
-
-# Second Model: Random Forest 
-This model takes a while to train.
+Here, we use a Random Forest Model to predict 3 categories directly. We would be expecting a higher accuracy in using this model due to clever use of decision trees and bootstrapping to make good predictions without overfitting. 
 ```{r}
 
 # subset columns in train so that it only has the prediction column, sentiment, and the rest of the words
@@ -365,8 +421,8 @@ predict_rf_train <- predict(rf_model, newdata=train_data , type = "response" )
 tab_rf_train <- table(predict_rf_train, train_data$sentiment)
 
 print(tab_rf_train )
-Accuracy = (tab_rf_train[1,1]+tab_rf_train[2,2] + tab_rf_train[3,3])/sum(tab_rf_train)
-Accuracy # [1] 0.8387231
+accuracy_rf_train = (tab_rf_train[1,1]+tab_rf_train[2,2] + tab_rf_train[3,3])/sum(tab_rf_train)
+print( paste0("The accuracy of the Random Forest Model is ", round(accuracy_rf_train*100,2) , "% on the train data." ))
 
 
 # Test Model on Test Data
@@ -376,12 +432,22 @@ predict_rf <- predict(rf_model, newdata=test_data , type = "response" )
 tab_rf <- table(predict_rf, test_data$sentiment)
 
 print(tab_rf )
-Accuracy = (tab_rf[1,1]+tab_rf[2,2] + tab_rf[3,3])/sum(tab_rf)
-Accuracy # [1] 0.651129
+accuracy_rf_test = (tab_rf[1,1]+tab_rf[2,2] + tab_rf[3,3])/sum(tab_rf)
+
+print( paste0("The accuracy of the Random Forest Model is ", round(accuracy_rf_test*100,2) , "% on the test data." ))
 ```
 
 
 # Model 3 Neural Network
+Here, we explore using a Neural Network to see if it would be better than the previous two models. As there may be numerous permutations of the number of layers and the activation functions of each layer, we will be comparing the effectiveness of 2 different Neural Network Models. They are as such:
+
+* *Model 3.1*: 1 Hidden Layer with ReLu Activation function, and a final layer of Softmax Activation.
+
+* *Model 3.2*: 1 Hidden Layer with Softmax Activation function, and a final layer of Softmax Activation.
+
+Both models have the same input and output parameters and L1 regularizer for the bias and activity variables of the hidden layer.
+
+## Model 3.1: Neural Network Model with ReLu Hidden Layer
 ```{r}
 
 # subset columns in train so that it only has the prediction column, sentiment, and the rest of the words
@@ -397,14 +463,11 @@ Y_train = to_categorical( subset(train_nn , select = c(sentiment) ) , num_classe
 print( ncol(X_train))
 print( ncol(Y_train))
 
-
-
-
 # print( length( unique( colnames(X_train) ) )==  length( colnames(X_train) ) )
 # print( class(X_train[,1]) )
 
 test_nn <- test_data
-X_test = subset(test_nn , select = -c(sentiment , Predicted_Sentiment ) )
+X_test = subset(test_nn , select = -c(sentiment ) )
 # test_nn$sentiment
 Y_test = to_categorical( subset(test_nn , select = c(sentiment) ) , num_classes = 3)
 print( ncol(X_test))
@@ -420,10 +483,6 @@ nn_model %>%
   layer_dense(units = 64, activation = 'relu' , input_shape = input_dim ,
               bias_regularizer=regularizer_l1(l=0.1),
               activity_regularizer=regularizer_l1(l=.05) ) %>%
-  
-  layer_dense(units = 64, activation = 'relu',
-              bias_regularizer=regularizer_l1(l=0.1),
-              activity_regularizer=regularizer_l1(l=.05)) %>%
   layer_dense(units = 3 , activation = 'softmax')
 
 nn_model %>% compile(
@@ -444,80 +503,92 @@ history <- nn_model %>% fit(
   validation_split = 0.2  # Split data into training and validation sets
 )
 
-performance_nn = nn_model %>% evaluate(as.matrix( X_test), Y_test)
-print(performance_nn)
-accuracy <- performance_nn[2]
-print(str_c("Accuracy of the Neural Network model was ",round(accuracy*100,0),"% on the test data"))
 
+performance_nn_train = nn_model %>% evaluate(as.matrix( X_train), Y_train)
+print(performance_nn_train)
+accuracy_nn_train <- performance_nn_train[2]
+print(str_c("Accuracy of the Neural Network model was ",round(accuracy_nn_train*100,2),"% on the train data"))
 
+performance_nn_train = nn_model %>% evaluate(as.matrix( X_test), Y_test)
+print(performance_nn_train)
+accuracy_nn_train <- performance_nn_train[2]
+print(str_c("Accuracy of the Neural Network model was ",round(accuracy_nn_train*100,2),"% on the test data"))
 ```
+
+## Model 3.2: Neural Network Model with Softmax Hidden Layer
 ```{r}
-# Load the required libraries
-library(keras)
 
-# Example data with categorical values (0 or 1) and column names
-# Replace this with your actual data
-input_data <- as.data.frame(matrix(sample(0:3, ncol(X_train) * 14410, replace = TRUE), ncol = ncol(X_train)))
-colnames(input_data) <- colnames(X_train)
+# subset columns in train so that it only has the prediction column, sentiment, and the rest of the words
+train_nn <- train_data
+X_train = subset(train_nn , select = -c(sentiment) )
 
-print( length(colnames(X_train)) )
-print(ncol(X_train) )
+# check data type of features is integer
+# column_types <- all(sapply(X_train, is.integer))
+# print(column_types )
+Y_train = to_categorical( subset(train_nn , select = c(sentiment) ) , num_classes = 3 )
+# print(Y_train)
 
-# Example labels (categorical: -1, 0, or 1)
-# Replace this with your actual labels
-labels <- sample(-1:1, 14410, replace = TRUE)
+print( ncol(X_train))
+print( ncol(Y_train))
 
+# print( length( unique( colnames(X_train) ) )==  length( colnames(X_train) ) )
+# print( class(X_train[,1]) )
 
-# print(input_data)
-# print(labels)
-# Define the input dimension (number of features)
-input_dim <- ncol(input_data)
+test_nn <- test_data
+X_test = subset(test_nn , select = -c(sentiment ) )
+# test_nn$sentiment
+Y_test = to_categorical( subset(test_nn , select = c(sentiment) ) , num_classes = 3)
+print( ncol(X_test))
+print( ncol(Y_test))
 
-# Create a sequential neural network model
-nn_model <- keras_model_sequential()
+max_category_value <- 1
+input_dim <- ncol(X_train)
+embedding_dim <- 128
 
-# Add a dense layer (adjust the number of units and activation as needed)
+nn_model = keras_model_sequential()
+
 nn_model %>%
-  layer_dense(units = 128, activation = 'relu', input_shape = c(input_dim))
+  layer_dense(units = 64, activation = 'softmax', input_shape = input_dim ,
+              bias_regularizer=regularizer_l1(l=0.1),
+              activity_regularizer=regularizer_l1(l=.05)) %>%
+  layer_dense(units = 3 , activation = 'softmax' )
 
-# Add more hidden layers as needed
-nn_model %>%
-  layer_dense(units = 64, activation = 'relu') %>%
-  layer_dense(units = 32, activation = 'relu')
-
-# Output layer with 3 units for -1, 0, and 1 categories
-nn_model %>%
-  layer_dense(units = 3, activation = 'softmax')
-
-# Compile the model
 nn_model %>% compile(
-  optimizer = 'adam',
-  loss = 'categorical_crossentropy',  # Use categorical cross-entropy for multiclass classification
-  metrics = c('accuracy')
+  loss      = 'categorical_crossentropy',
+  optimizer = optimizer_rmsprop(),
+  metrics   = c('accuracy')
 )
+nn_model %>% plot_model()
+summary(nn_model)
 
-# Convert labels to one-hot encoding (assuming labels are -1, 0, or 1)
-labels <- to_categorical(labels + 1, num_classes = 3)  # +1 to map -1, 0, 1 to 0, 1, 2
 
-# Train the model (replace 'input_data' and 'labels' with your actual data and labels)
+
 history <- nn_model %>% fit(
-  x = as.matrix(input_data),
-  y = labels,
+  x = as.matrix( X_train ) ,
+  y = Y_train ,
   epochs = 100,  # Number of training iterations
-  batch_size = 32,  # Batch size for gradient updates
+  batch_size = 128,  # Batch size for gradient updates
   validation_split = 0.2  # Split data into training and validation sets
 )
 
 
+performance_nn_train = nn_model %>% evaluate(as.matrix( X_train), Y_train)
+print(performance_nn_train)
+accuracy_nn_train <- performance_nn_train[2]
+print(str_c("Accuracy of the Neural Network model was ",round(accuracy_nn_train*100,2),"% on the train data"))
+
+performance_nn_train = nn_model %>% evaluate(as.matrix( X_test), Y_test)
+print(performance_nn_train)
+accuracy_nn_train <- performance_nn_train[2]
+print(str_c("Accuracy of the Neural Network model was ",round(accuracy_nn_train*100,2),"% on the test data"))
+
 ```
+The Neural Network models 3.1 and 3.2 have accuracy scores of 61.5% and 63.89%. It turns out that the model that uses Softmax activation for the hidden layer performed slightly better.
 
-
-## Predictions for Neural Network Model
-```{r}
-performance_nn = nn_model %>% evaluate(as.matrix( X_test), Y_test)
-print(performance_nn)
-print(str_c("Accuracy of the Neural Network model was ",round(accuracy*100,0),"% on the test data"))
-```
-
+It is surprising that the accuracy of the Neural Network did not perform as well as the Random Forest model. 
 
 # Conclusion
+
+In this project, we coded and used the ```clean.R``` script to clean and process the ```train.csv``` data, which outputs train_data.csv for model training and testing. Through data wrangling, we extracted information of the punctuation and emoticons from the tweets into categorical columns that represent certain emotions which would be useful for the models in predicting the sentiment of the tweets.
+
+In the model training and testing, we experimented with a Double Logistic Regression Model, Random Forest Model and Neural Network Model. Of the 3 models used, we found that the Random Forest Model worked the best with the highest accuracy on the test dataset.
