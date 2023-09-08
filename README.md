@@ -1,5 +1,6 @@
-# The Analytics Edge Data Competition, Twitter Sentiment Analysis
- 
+#Twitter Sentiment Analysis
+This project is for SUTD ESD 40.016 The Analytics Edge, Data Competition. In this project, we were tasked to code a Machine Learning Model in R to predict sentiments of tweets. 
+
 ###### tags: `SUTD`
 
 # Team 23
